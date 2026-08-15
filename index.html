@@ -287,26 +287,33 @@
         }
 
         // Process Image Input & Call Gemini API
-        async function processImageInput(dataUrl) {
-            const compressedUrl = await compressImage(dataUrl);
-            currentImageData = compressedUrl;
-            document.getElementById('previewImg').src = compressedUrl;
-            document.getElementById('previewSection').classList.remove('hidden');
-            
-            const processingBadge = document.getElementById('processingBadge');
-            processingBadge.classList.remove('hidden');
+        async function callGeminiAI(base64Data, mimeType) {
+    try {
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data, mimeType })
+        });
 
-            const base64Data = compressedUrl.split(',')[1];
-            const mimeType = compressedUrl.split(';')[0].split(':')[1];
-
-            try {
-                await callGeminiAI(base64Data, mimeType);
-            } catch (error) {
-                showToast("Gagal memproses gambar: " + error.message, "error");
-            } finally {
-                processingBadge.classList.add('hidden');
-            }
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || "Gagal terhubung ke server backend.");
         }
+
+        const result = await response.json();
+        const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!textCandidate) {
+            throw new Error("AI tidak mengembalikan data yang valid.");
+        }
+
+        const parsedData = JSON.parse(textCandidate);
+        renderExtractedData(parsedData);
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
 
         // Gemini API Integration
         async function callGeminiAI(base64Data, mimeType) {
