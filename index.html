@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+c:\Web Sell\index.html (4).html<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -287,33 +287,26 @@
         }
 
         // Process Image Input & Call Gemini API
-        async function callGeminiAI(base64Data, mimeType) {
-    try {
-        const response = await fetch('/api/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64Data, mimeType })
-        });
+        async function processImageInput(dataUrl) {
+            const compressedUrl = await compressImage(dataUrl);
+            currentImageData = compressedUrl;
+            document.getElementById('previewImg').src = compressedUrl;
+            document.getElementById('previewSection').classList.remove('hidden');
+            
+            const processingBadge = document.getElementById('processingBadge');
+            processingBadge.classList.remove('hidden');
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || "Gagal terhubung ke server backend.");
+            const base64Data = compressedUrl.split(',')[1];
+            const mimeType = compressedUrl.split(';')[0].split(':')[1];
+
+            try {
+                await callGeminiAI(base64Data, mimeType);
+            } catch (error) {
+                showToast("Gagal memproses gambar: " + error.message, "error");
+            } finally {
+                processingBadge.classList.add('hidden');
+            }
         }
-
-        const result = await response.json();
-        const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!textCandidate) {
-            throw new Error("AI tidak mengembalikan data yang valid.");
-        }
-
-        const parsedData = JSON.parse(textCandidate);
-        renderExtractedData(parsedData);
-
-    } catch (error) {
-        throw new Error(error.message);
-    }
-}
 
         // Gemini API Integration
         async function callGeminiAI(base64Data, mimeType) {
@@ -518,7 +511,7 @@
             toast.textContent = message;
             toast.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-700', 'bg-rose-50', 'text-rose-700', 'bg-slate-100', 'text-slate-600');
             
-            // PERBAIKAN: Mengubah if/type menjadi if (type
+            // Perbaikan di sini:
             if (type === 'success') {
                 toast.classList.add('bg-emerald-50', 'text-emerald-700');
             } else if (type === 'error') {
