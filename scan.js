@@ -156,7 +156,7 @@ async function processImageInput(dataUrl) {
     }
 }
 
-// MEMANGGIL BACKEND AMAN DI /api/gemini
+// MEMANGGIL BACKEND AMAN DI /api/gemini (Tanpa Menyimpan API Key di Sini)
 async function callGeminiAI(base64Data, mimeType) {
     try {
         const response = await fetch('/api/gemini', {
