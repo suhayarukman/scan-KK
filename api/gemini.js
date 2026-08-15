@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Hanya izinkan method POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -16,8 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Menggunakan model Gemini 3.5 Flash terbaru yang stabil
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$){apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -27,7 +25,7 @@ export default async function handler(req, res) {
           {
             parts: [
               {
-                text: "Ekstraklah data Kartu Keluarga ini ke dalam format JSON murni tanpa teks lain di luar JSON dengan struktur: { \"no_kk\": \"...\", \"kepala_keluarga\": \"...\", \"alamat\": \"...\", \"anggota\": [ { \"nama_lengkap\": \"...\", \"nik\": \"...\", \"jenis_kelamin\": \"...\", \"tempat_lahir\": \"...\", \"tanggal_lahir\": \"...\", \"jenis_pekerjaan\": \"...\", \"alamat_lengkap\": \"...\" } ] }"
+                text: "Ekstraklah data Kartu Keluarga ini ke dalam format JSON MURNI. PENTING: Jangan gunakan markdown code block seperti ```json atau ``` di awal dan akhir jawaban. Kembalikan hanya teks JSON mentah dengan struktur: { \"no_kk\": \"...\", \"kepala_keluarga\": \"...\", \"alamat\": \"...\", \"anggota\": [ { \"nama_lengkap\": \"...\", \"nik\": \"...\", \"jenis_kelamin\": \"...\", \"tempat_lahir\": \"...\", \"tanggal_lahir\": \"...\", \"jenis_pekerjaan\": \"...\", \"alamat_lengkap\": \"...\" } ] }"
               },
               {
                 inline_data: {
@@ -48,8 +46,21 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: errorMessage });
     }
 
-    return res.status(200).json(data);
+    // Ambil teks dari kandidat AI
+    let textCandidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textCandidate) {
+      return res.status(500).json({ error: "AI tidak mengembalikan data yang valid." });
+    }
+
+    // Bersihkan pembungkus markdown code block jika AI masih memunculkannya
+    textCandidate = textCandidate.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    // Parse string menjadi JSON valid sebelum dikirim balik ke frontend
+    const parsedJson = JSON.parse(textCandidate);
+
+    return res.status(200).json(parsedJson);
+
   } catch (error) {
-    return res.status(500).json({ error: 'Server error: ' + error.message });
+    return res.status(500).json({ error: 'Gagal memparsing respons AI: ' + error.message });
   }
 }
