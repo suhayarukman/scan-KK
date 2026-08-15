@@ -1,4 +1,4 @@
-c:\Web Sell\index.html (4).html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -191,7 +191,6 @@ c:\Web Sell\index.html (4).html<!DOCTYPE html>
                 try {
                     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 } catch (e) {
-                    // Fallback jika facingMode environment tidak didukung device/browser
                     videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 }
 
@@ -286,7 +285,7 @@ c:\Web Sell\index.html (4).html<!DOCTYPE html>
             });
         }
 
-        // Process Image Input & Call Gemini API
+        // Process Image Input & Call Backend API
         async function processImageInput(dataUrl) {
             const compressedUrl = await compressImage(dataUrl);
             currentImageData = compressedUrl;
@@ -308,106 +307,36 @@ c:\Web Sell\index.html (4).html<!DOCTYPE html>
             }
         }
 
-        // Gemini API Integration
+        // MEMANGGIL BACKEND AMAN DI /api/gemini
         async function callGeminiAI(base64Data, mimeType) {
-            const systemPrompt = `Anda adalah sistem AI pemindai Kartu Keluarga (KK) Indonesia yang sangat canggih. Tugas Anda adalah:
-1. Membaca dan menjernihkan teks Kartu Keluarga yang buram atau kurang jelas pada gambar yang diberikan.
-2. Mengekstrak informasi Kepala Keluarga, Nomor KK, Alamat, serta seluruh daftar anggota keluarga yang tercantum.
-3. Mengembalikan output dalam format JSON murni yang sesuai dengan skema yang diminta tanpa teks tambahan.`;
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base64Data, mimeType })
+                });
 
-            const userPrompt = `Analisis gambar Kartu Keluarga ini. Jernihkan teks yang buram secara mental, lalu ekstrak data ke dalam struktur JSON dengan format berikut:
-{
-  "no_kk": "Nomor KK",
-  "kepala_keluarga": "Nama Kepala Keluarga",
-  "alamat": "Alamat Lengkap",
-  "anggota": [
-    {
-      "nama_lengkap": "Nama lengkap anggota",
-      "nik": "NIK 16 digit",
-      "jenis_kelamin": "Laki-laki / Perempuan",
-      "tempat_lahir": "Tempat lahir",
-      "tanggal_lahir": "Tanggal lahir (DD-MM-YYYY)",
-      "jenis_pekerjaan": "Pekerjaan",
-      "alamat_lengkap": "Alamat lengkap atau domisili sesuai KK"
-    }
-  ]
-}`;
-
-            const payload = {
-                contents: [{
-                    role: "user",
-                    parts: [
-                        { text: userPrompt },
-                        { inlineData: { mimeType: mimeType, data: base64Data } }
-                    ]
-                }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            no_kk: { type: "STRING" },
-                            kepala_keluarga: { type: "STRING" },
-                            alamat: { type: "STRING" },
-                            anggota: {
-                                type: "ARRAY",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        nama_lengkap: { type: "STRING" },
-                                        nik: { type: "STRING" },
-                                        jenis_kelamin: { type: "STRING" },
-                                        tempat_lahir: { type: "STRING" },
-                                        tanggal_lahir: { type: "STRING" },
-                                        jenis_pekerjaan: { type: "STRING" },
-                                        alamat_lengkap: { type: "STRING" }
-                                    },
-                                    required: ["nama_lengkap", "nik", "jenis_kelamin", "tempat_lahir", "tanggal_lahir", "jenis_pekerjaan", "alamat_lengkap"]
-                                }
-                            }
-                        },
-                        required: ["no_kk", "kepala_keluarga", "alamat", "anggota"]
-                    }
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || "Gagal terhubung ke server backend.");
                 }
-            };
-            
-            let response = null;
-            let retries = 3;
-            let delay = 1000;
 
-            for (let i = 0; i < retries; i++) {
-                try {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (response.ok) break;
-                } catch (e) {
-                    if (i === retries - 1) throw e;
-                    await new Promise(res => setTimeout(res, delay));
-                    delay *= 2;
+                const result = await response.json();
+                const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!textCandidate) {
+                    throw new Error("AI tidak mengembalikan data yang valid.");
                 }
-            }
 
-            if (!response || !response.ok) {
-                const errText = await response.text().catch(() => '');
-                throw new Error("Gagal terhubung ke server AI. " + errText);
-            }
+                const parsedData = JSON.parse(textCandidate);
+                renderExtractedData(parsedData);
 
-            const result = await response.json();
-            const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            if (!textCandidate) {
-                throw new Error("AI tidak mengembalikan data yang valid.");
+            } catch (error) {
+                throw new Error(error.message);
             }
-
-            const parsedData = JSON.parse(textCandidate);
-            renderExtractedData(parsedData);
         }
 
-        // Render Data to Table & UI (Compact Row Spacing)
+        // Render Data to Table & UI
         function renderExtractedData(data) {
             document.getElementById('metaNoKK').textContent = data.no_kk || '-';
             document.getElementById('metaKepala').textContent = data.kepala_keluarga || '-';
@@ -511,7 +440,6 @@ c:\Web Sell\index.html (4).html<!DOCTYPE html>
             toast.textContent = message;
             toast.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-700', 'bg-rose-50', 'text-rose-700', 'bg-slate-100', 'text-slate-600');
             
-            // Perbaikan di sini:
             if (type === 'success') {
                 toast.classList.add('bg-emerald-50', 'text-emerald-700');
             } else if (type === 'error') {
