@@ -322,6 +322,19 @@
                     throw new Error(errData.error || "Gagal terhubung ke server backend.");
                 }
 
+                // Karena backend sudah mereturn JSON bersih
+                const parsedData = await response.json();
+                
+                if (!parsedData) {
+                    throw new Error("AI tidak mengembalikan data yang valid.");
+                }
+
+                renderExtractedData(parsedData);
+
+            } catch (error) {
+                throw new Error(error.message);
+            }
+        }
                 const result = await response.json();
                 const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
                 
