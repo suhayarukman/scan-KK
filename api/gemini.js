@@ -11,7 +11,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Data gambar dan tipe MIME diperlukan.' });
         }
 
-        // Ambil API Key dari Environment Variable Vercel
+        // Ambil API Key dari Environment Variable Vercel secara aman
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             return res.status(500).json({ error: 'Konfigurasi server bermasalah (API Key tidak ditemukan di Environment Variables Vercel).' });
@@ -79,7 +79,6 @@ export default async function handler(req, res) {
             }
         };
 
-        // DEKLARASI apiUrl YANG AMAN DI SERVER
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const response = await fetch(apiUrl, {
