@@ -381,7 +381,8 @@
         }
 
         function refreshTableDisplay() {
-            const tbody = document.getElementById('dataTableBody');
+            const tbody = documen
+                t.getElementById('dataTableBody');
             tbody.innerHTML = '';
 
             if (allExtractedData.length === 0) {
@@ -475,6 +476,7 @@
         }
 
         // --- FUNGSI LOCALSTORAGE (Agar data menetap saat browser ditutup) ---
+        // --- PERBAIKAN FUNGSI LOCALSTORAGE ---
         function saveToLocalStorage() {
             localStorage.setItem('kk_extracted_data', JSON.stringify(allExtractedData));
         }
