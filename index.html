@@ -322,27 +322,12 @@
                     throw new Error(errData.error || "Gagal terhubung ke server backend.");
                 }
 
-                // Karena backend sudah mereturn JSON bersih
                 const parsedData = await response.json();
                 
                 if (!parsedData) {
                     throw new Error("AI tidak mengembalikan data yang valid.");
                 }
 
-                renderExtractedData(parsedData);
-
-            } catch (error) {
-                throw new Error(error.message);
-            }
-        }
-                const result = await response.json();
-                const textCandidate = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (!textCandidate) {
-                    throw new Error("AI tidak mengembalikan data yang valid.");
-                }
-
-                const parsedData = JSON.parse(textCandidate);
                 renderExtractedData(parsedData);
 
             } catch (error) {
@@ -376,13 +361,11 @@
             document.getElementById('btnExport').disabled = allExtractedData.length === 0;
             showToast("Berhasil memindai dan menambahkan data KK ke tabel!", "success");
 
-            // Simpan otomatis ke memori lokal browser
             saveToLocalStorage();
         }
 
         function refreshTableDisplay() {
-            const tbody = documen
-                t.getElementById('dataTableBody');
+            const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = '';
 
             if (allExtractedData.length === 0) {
@@ -414,7 +397,6 @@
             document.getElementById('kkMeta').classList.add('hidden');
             document.getElementById('btnExport').disabled = true;
             
-            // Hapus memori lokal saat reset
             localStorage.removeItem('kk_extracted_data');
             
             showToast("Semua data berhasil direset.", "info");
@@ -475,8 +457,7 @@
             }, 4000);
         }
 
-        // --- FUNGSI LOCALSTORAGE (Agar data menetap saat browser ditutup) ---
-        // --- PERBAIKAN FUNGSI LOCALSTORAGE ---
+        // LocalStorage Handling
         function saveToLocalStorage() {
             localStorage.setItem('kk_extracted_data', JSON.stringify(allExtractedData));
         }
