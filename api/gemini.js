@@ -15,7 +15,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiUrl = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$){apiKey}`;
+    // PASTIKAN MENGGUNAKAN BACKTICK (`) DI SINI, BUKAN TANDA KUTIP SATU (')
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -46,16 +47,12 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: errorMessage });
     }
 
-    // Ambil teks dari kandidat AI
     let textCandidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!textCandidate) {
       return res.status(500).json({ error: "AI tidak mengembalikan data yang valid." });
     }
 
-    // Bersihkan pembungkus markdown code block jika AI masih memunculkannya
     textCandidate = textCandidate.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    // Parse string menjadi JSON valid sebelum dikirim balik ke frontend
     const parsedJson = JSON.parse(textCandidate);
 
     return res.status(200).json(parsedJson);
