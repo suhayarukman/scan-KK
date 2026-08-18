@@ -89,7 +89,7 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-900">2. Hasil Ekstraksi Data KK</h2>
-                    <p class="text-sm text-slate-500">Tersusun rapi otomatis (mendukung banyak KK & Ekspor per 10 Baris/Lembar)</p>
+                    <p class="text-sm text-slate-500">Tersusun rapi otomatis (mendukung banyak KK & Ekspor per 100 KK)</p>
                 </div>
                 <div class="flex items-center space-x-2">
                     <button id="btnClear" onclick="clearAllData()" class="bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm font-medium hover:bg-slate-300 transition shadow-sm">
@@ -97,7 +97,7 @@
                     </button>
                     <button id="btnExport" onclick="exportToExcel()" disabled class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Unduh Excel (Per 10 Baris/Halaman)</span>
+                        <span>Unduh Excel (Per 100 KK)</span>
                     </button>
                 </div>
             </div>
@@ -229,7 +229,7 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.80);
             stopCamera();
             processImageInput(dataUrl);
         }
@@ -263,8 +263,8 @@
             }
         });
 
-        // Compress image before sending
-        async function compressImage(dataUrl, maxWidth = 1200, quality = 0.8) {
+        // Optimized compression for faster loading & API response speed
+        async function compressImage(dataUrl, maxWidth = 1000, quality = 0.75) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.src = dataUrl;
@@ -346,6 +346,7 @@
                 data.anggota.forEach(item => {
                     allExtractedData.push({
                         no_kk: data.no_kk || '-',
+                        kepala_keluarga: data.kepala_keluarga || '',
                         nama_lengkap: item.nama_lengkap || '',
                         nik: item.nik || '',
                         jenis_kelamin: item.jenis_kelamin || '',
@@ -402,41 +403,59 @@
             showToast("Semua data berhasil direset.", "info");
         }
 
-        // Export to Excel (.xlsx)
+        // Export to Excel (.xlsx) per 100 KK (Kartu Keluarga)
         function exportToExcel() {
             if (allExtractedData.length === 0) return;
 
+            // Kelompokkan data berdasarkan No. KK
+            const groupedByKK = {};
+            allExtractedData.forEach(item => {
+                const noKK = item.no_kk || 'Tanpa_No_KK';
+                if (!groupedByKK[noKK]) {
+                    groupedByKK[noKK] = [];
+                }
+                groupedByKK[noKK].push(item);
+            });
+
+            const kkKeys = Object.keys(groupedByKK);
+            const chunkKKSize = 100; // 100 Kartu Keluarga per sheet/bagian
             const workbook = XLSX.utils.book_new();
-            const chunkSize = 10;
 
-            for (let i = 0; i < allExtractedData.length; i += chunkSize) {
-                const chunk = allExtractedData.slice(i, i + chunkSize);
-                const pageNum = Math.floor(i / chunkSize) + 1;
+            for (let i = 0; i < kkKeys.length; i += chunkKKSize) {
+                const kkChunkKeys = kkKeys.slice(i, i + chunkKKSize);
+                const pageNum = Math.floor(i / chunkKKSize) + 1;
 
-                const exportData = chunk.map((item, index) => ({
-                    "No": i + index + 1,
-                    "No. KK": item.no_kk,
-                    "Nama Lengkap": item.nama_lengkap,
-                    "NIK": item.nik,
-                    "Jenis Kelamin": item.jenis_kelamin,
-                    "Tempat Lahir": item.tempat_lahir,
-                    "Tanggal Lahir": item.tanggal_lahir,
-                    "Jenis Pekerjaan": item.jenis_pekerjaan,
-                    "Alamat Lengkap": item.alamat_lengkap
-                }));
+                let chunkDataRows = [];
+                let globalIndex = 1;
 
-                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                kkChunkKeys.forEach(kk => {
+                    groupedByKK[kk].forEach(item => {
+                        chunkDataRows.push({
+                            "No": globalIndex++,
+                            "No. KK": item.no_kk,
+                            "Nama Lengkap": item.nama_lengkap,
+                            "NIK": item.nik,
+                            "Jenis Kelamin": item.jenis_kelamin,
+                            "Tempat Lahir": item.tempat_lahir,
+                            "Tanggal Lahir": item.tanggal_lahir,
+                            "Jenis Pekerjaan": item.jenis_pekerjaan,
+                            "Alamat Lengkap": item.alamat_lengkap
+                        });
+                    });
+                });
+
+                const worksheet = XLSX.utils.json_to_sheet(chunkDataRows);
                 
                 worksheet['!cols'] = [
                     {wch: 5}, {wch: 22}, {wch: 25}, {wch: 20}, 
                     {wch: 15}, {wch: 18}, {wch: 15}, {wch: 22}, {wch: 35}
                 ];
 
-                XLSX.utils.book_append_sheet(workbook, worksheet, `Bagian_${pageNum}`);
+                XLSX.utils.book_append_sheet(workbook, worksheet, `100_KK_${pageNum}`);
             }
 
-            XLSX.writeFile(workbook, "Data_Kartu_Keluarga_Per10.xlsx");
-            showToast("File Excel berhasil diunduh dengan pembagian per 10 data!", "success");
+            XLSX.writeFile(workbook, "Data_Kartu_Keluarga_Per_100_KK.xlsx");
+            showToast("File Excel berhasil diunduh dengan pengelompokan per 100 KK!", "success");
         }
 
         function showToast(message, type) {
